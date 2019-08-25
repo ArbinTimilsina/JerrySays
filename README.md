@@ -2,7 +2,7 @@
 
 Try to predict how Jerry Seinfeld would finish a given incomplete sentence.
 
-### Dataset for this project is obtained from https://www.kaggle.com/thec03u5/seinfeld-chronicles
+#### Dataset for this project is obtained from https://www.kaggle.com/thec03u5/seinfeld-chronicles
 and can be found in /seinfeld_scripts.
 
 ## Instructions
@@ -19,7 +19,7 @@ pip install -e .
 python -m spacy download en
 ```
 
-### To train the model, do
+### To train the model:
 ```
 train-jerry --help
 
@@ -27,7 +27,7 @@ train-jerry --help
 train-jerry -epoch 10 -batch_size 500
 ```
 
-### To use the model, do
+### To use the model:
 ```
 serve-jerry
 ```
