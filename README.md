@@ -19,7 +19,7 @@ pip install -e .
 python -m spacy download en
 ```
 
-### To train the model, do
+### To train the model:
 ```
 train-jerry --help
 
@@ -27,7 +27,7 @@ train-jerry --help
 train-jerry -epoch 10 -batch_size 500
 ```
 
-### To use the model, do
+### To use the model:
 ```
 serve-jerry
 ```
