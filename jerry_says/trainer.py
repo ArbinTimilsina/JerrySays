@@ -1,10 +1,11 @@
 import math
+
 import torch
-from tqdm import tqdm
 from torch.nn import Module
+from tqdm import tqdm
 
 from jerry_says.model import (
-    generate_square_subsequent_mask, generate_key_padding_masks
+    generate_key_padding_masks, generate_square_subsequent_mask
 )
 
 
@@ -158,11 +159,11 @@ class LabelSmoothingLoss(Module):
 class ModifiedAdamOptimizer:
     def __init__(self, model, rnn_size):
         self.optimizer = torch.optim.Adam(
-            model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9
+            model.parameters(), lr=0.01, betas=(0.9, 0.98), eps=1e-9
         )
         self.rnn_size = rnn_size
         self.warmup = 20
-        self.factor = 2
+        self.factor = 0.1
         self._step = 0
         self._rate = 0
 

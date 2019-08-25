@@ -1,26 +1,24 @@
-import torch
+import argparse
 import os
 import time
-import argparse
 
-import torch.optim as optim
+import torch
 
 from jerry_says.data_reader import (
-    get_sentences_by_jerry, build_dataset_and_vocab, SimpleIterator
+    SimpleIterator, build_dataset_and_vocab, get_sentences_by_jerry
 )
 from jerry_says.model import (
-    build_transformer_model, count_parameters, build_generator, RNN_SIZE
+    RNN_SIZE, build_generator, build_transformer_model, count_parameters
 )
-
 from jerry_says.trainer import (
-    train_epoch, validate_epoch, LabelSmoothingLoss, ModifiedAdamOptimizer
+    LabelSmoothingLoss, ModifiedAdamOptimizer, train_epoch, validate_epoch
 )
 
 
 def argument_parser():
     ap = argparse.ArgumentParser()
     ap.add_argument(
-        '-epochs', '--epochs', type=int, default=512, help='Choose the number of epochs.'
+        '-epochs', '--epochs', type=int, default=50, help='Choose the number of epochs.'
     )
     ap.add_argument(
         '-batch_size', '--batch_size', type=int, default=200, help='Batch size.'

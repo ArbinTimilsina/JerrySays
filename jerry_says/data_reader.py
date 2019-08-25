@@ -1,9 +1,10 @@
-import os
 import csv
-from nltk import sent_tokenize
-import spacy
-from torchtext.data import Field, Example, Dataset, Iterator, batch
+import os
 from typing import List
+
+import spacy
+from nltk import sent_tokenize
+from torchtext.data import Dataset, Example, Field, Iterator, batch
 
 SPACY_EN = spacy.load('en')
 

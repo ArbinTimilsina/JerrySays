@@ -1,7 +1,9 @@
-import os
 import json
-from jerry_says.server import greedy_server
+import os
+
 from flask import Flask, request
+
+from jerry_says.server import greedy_server
 
 app = Flask(__name__)
 

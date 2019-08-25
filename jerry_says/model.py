@@ -1,13 +1,12 @@
-import torch
 import math
-from torch.nn.modules import (
-    Module, TransformerEncoderLayer, TransformerEncoder, TransformerDecoderLayer,
-    TransformerDecoder, LayerNorm, Dropout
-)
-from torch.nn import (
-    Embedding, Linear, LogSoftmax, Sequential
-)
+
+import torch
 from torch.autograd import Variable
+from torch.nn import Embedding, Linear, LogSoftmax, Sequential
+from torch.nn.modules import (
+    Dropout, LayerNorm, Module, TransformerDecoder, TransformerDecoderLayer,
+    TransformerEncoder, TransformerEncoderLayer
+)
 
 # Keep RNN size a constant
 RNN_SIZE = 512
@@ -113,7 +112,7 @@ def build_transformer_model(
         tgt_vocab_size: int,
         rnn_size: int = 512,
         num_head: int = 8,
-        num_layers: int = 3,
+        num_layers: int = 2,
         dim_ff: int = 2048,
         dropout: float = 0.1
 ) -> EncoderDecoder:

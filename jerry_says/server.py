@@ -1,9 +1,7 @@
 import torch
 
-from jerry_says.model import (
-    build_transformer_model, build_generator, RNN_SIZE
-)
 from jerry_says.data_reader import tokenize_en
+from jerry_says.model import RNN_SIZE, build_generator, build_transformer_model
 
 
 def build_model_to_serve(saved_model_path, rnn_size=RNN_SIZE):
