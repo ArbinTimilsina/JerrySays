@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <title>
+        Jerry says...
+    </title>
+</head>
+
+
+<body style='text-align:center; margin-top:50px' >
+    <form action = 'http://localhost:5050/completed' method = 'POST'>
+        <p>
+            <h2>
+                Jerry, complete this, please:
+            </h2>
+            <input type = 'text' name = 'seed' />
+        </p>
+    </form>
+</body>
+
+<body style='text-align:center' >
+    <br/>
+    <h4>
+        You asked Jerry to complete:
+        <div> {{seed}} </div>
+    </h4>
+
+    <br/>
+    <img src='/static/jerry.jpg' alt='Jerry Seinfeld'>
+    <br/>
+
+    <h1>
+        Jerry says:
+        <div> {{jerry_says}} </div>
+    </h1>
+</body>
+
+</html>

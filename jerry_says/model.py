@@ -2,17 +2,22 @@ import math
 
 import torch
 from torch.autograd import Variable
-from torch.nn import Embedding, Linear, LogSoftmax, Sequential
+from torch.nn import Embedding, Linear, Sequential
 from torch.nn.modules import (
     Dropout, LayerNorm, Module, TransformerDecoder, TransformerDecoderLayer,
     TransformerEncoder, TransformerEncoderLayer
 )
 
-# Keep RNN size a constant
-RNN_SIZE = 512
+# Keep RNN size and dropout a constant
+RNN_SIZE = 256
+DROPOUT = 0.0
 
 
 class Embeddings(Module):
+    """
+    Learned embedding to covert a vector to dimension rnn_size. The wights are
+    multiplied by sqrt(rnn_size).
+    """
     def __init__(self, vocab_size, rnn_size):
         super(Embeddings, self).__init__()
         self.lut = Embedding(vocab_size, rnn_size)
@@ -23,11 +28,18 @@ class Embeddings(Module):
 
 
 class PositionalEncoding(Module):
-    def __init__(self, rnn_size, dropout=0.1, max_len=5000):
+    """
+    Positional encoding so that the model can make use of the order of sequence. This is
+    added to the input embeddings at the bottom of the encoder and decoder stacks.
+
+    This class is copied from
+    http://nlp.seas.harvard.edu/2018/04/03/attention.html
+    """
+    def __init__(self, rnn_size, dropout=DROPOUT, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = Dropout(p=dropout)
 
-        # Compute the positional encodings once in log space.
+        # Compute the positional encodings once in log space
         pe = torch.zeros(max_len, rnn_size)
         position = torch.arange(0.0, max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0.0, rnn_size, 2) *
@@ -42,15 +54,31 @@ class PositionalEncoding(Module):
         return self.dropout(x)
 
 
+class Generator(Module):
+    """
+    Standard linear + softmax generation step.
+    """
+    def __init__(self, rnn_size, vocab_size):
+        super(Generator, self).__init__()
+        self.linear = Linear(rnn_size, vocab_size)
+
+    def forward(self, x):
+        return torch.nn.functional.log_softmax(self.linear(x), dim=-1)
+
+
 class EncoderDecoder(Module):
     """
     A standard Encoder-Decoder architecture.
     """
 
-    def __init__(self, encoder, decoder, rnn_size, src_vocab_size, tgt_vocab_size):
+    def __init__(
+            self, encoder, decoder, generator, rnn_size, src_vocab_size, tgt_vocab_size
+    ):
         super(EncoderDecoder, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
+        self.generator = generator
+
         self.src_embedding_pe = Sequential(
             Embedding(src_vocab_size, rnn_size), PositionalEncoding(rnn_size)
         )
@@ -88,6 +116,7 @@ class EncoderDecoder(Module):
         memory = self.encode(
             src=src, src_mask=src_mask, src_key_padding_mask=src_key_padding_mask
         )
+
         output = self.decode(
             memory=memory, tgt=tgt, tgt_mask=tgt_mask,
             tgt_key_padding_mask=tgt_key_padding_mask
@@ -110,11 +139,11 @@ class EncoderDecoder(Module):
 def build_transformer_model(
         src_vocab_size: int,
         tgt_vocab_size: int,
-        rnn_size: int = 512,
+        rnn_size: int = RNN_SIZE,
         num_head: int = 8,
         num_layers: int = 2,
         dim_ff: int = 2048,
-        dropout: float = 0.1
+        dropout: float = DROPOUT
 ) -> EncoderDecoder:
     """
     Build transformer model based on the paper "Attention Is All You Need".
@@ -139,26 +168,11 @@ def build_transformer_model(
     decoder_norm = LayerNorm(rnn_size)
     decoder = TransformerDecoder(decoder_layer, num_layers, decoder_norm)
 
-    return EncoderDecoder(encoder, decoder, rnn_size, src_vocab_size, tgt_vocab_size)
+    # Build generator
+    generator = Generator(rnn_size, tgt_vocab_size)
 
-
-def build_generator(
-        rnn_size: int,
-        vocab_size: int
-) -> Sequential:
-    """
-    Build standard linear + softmax generation step.
-
-    Arguments:
-        rnn_size: size of RNN hidden states (in decoder)
-        vocab_size: size of the vocabulary (target)
-
-    Returns:
-        A sequential container
-    """
-    return Sequential(
-        Linear(rnn_size, vocab_size),
-        LogSoftmax(dim=-1)
+    return EncoderDecoder(
+        encoder, decoder, generator, rnn_size, src_vocab_size, tgt_vocab_size
     )
 
 
@@ -182,15 +196,15 @@ def generate_square_subsequent_mask(size: int) -> torch.Tensor:
     return mask
 
 
-def generate_key_padding_masks(src, tgt, pad_index):
+def generate_key_padding_masks(src, tgt, src_pad_index, tgt_pad_index):
     """
     Generate source and target ByteTensor masks where True values are positions that
     will be masked with float('-inf') and False values will be unchanged.
     """
-    src_pad = (src == pad_index)
+    src_pad = (src == src_pad_index)
     src_mask = src_pad.bool().transpose(0, 1)
 
-    tgt_pad = (tgt == pad_index)
+    tgt_pad = (tgt == tgt_pad_index)
     tgt_mask = tgt_pad.bool().transpose(0, 1)
 
     return src_mask, tgt_mask

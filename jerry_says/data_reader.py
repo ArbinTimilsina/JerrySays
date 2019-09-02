@@ -46,8 +46,8 @@ def build_dataset_and_vocab(sentences: List[str]):
         - training and validation dataset (split 90-10%)
         - source and target fields with Vocab object
     """
-    # Minimum length for sentences to be included in the dataset
-    min_length = 6
+    # Minimum and maximum length for sentences to be included in the dataset
+    min_length, max_length = 4, 20
 
     # Define source and target fields
     bos_word = '<s>'
@@ -70,10 +70,18 @@ def build_dataset_and_vocab(sentences: List[str]):
         sentence_split = sentence.split(' ')
         sentence_length = len(sentence_split)
 
-        if sentence_length < min_length:
+        if sentence_length <= min_length or sentence_length >= max_length:
             continue
 
-        src_length = min_length - 2
+        # If sent length is less than 8
+        if sentence_length <= min_length + 4:
+            # Src length is 3
+            src_length = min_length - 1
+            # If sent length is greater than 16
+        else:
+            # Src length is 5
+            src_length = min_length + 1
+
         for i in range(0, sentence_length - src_length, src_length):
             src = ' '.join(sentence_split[i:i + src_length])
             tgt = ' '.join(sentence_split[i + src_length:])
@@ -113,10 +121,10 @@ class SimpleIterator(Iterator):
     def __init__(self, dataset, batch_size, sort_key, device, train):
         super().__init__(
             dataset=dataset, batch_size=batch_size, sort_key=sort_key,
-            device=device, train=train
+            device=device, train=train, repeat=False
         )
-        self.batches = []
 
     def create_batches(self):
+        self.batches = []
         for b in batch(self.data(), self.batch_size, self.batch_size_fn):
             self.batches.append(sorted(b, key=self.sort_key))

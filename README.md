@@ -14,7 +14,7 @@ cd JerrySays
 pip install -e .
 ```
 
-### Download SpaCy english model
+### Download SpaCy english model; needed for tokenization
 ```
 python -m spacy download en
 ```
@@ -31,15 +31,16 @@ train-jerry -epoch 10 -batch_size 500
 ```
 serve-jerry
 ```
-and then curl the following (or such) in a new terminal (or paste into a web browser)
+Paste the following into a web browser and follow along...
 ```
-http://localhost:5050/autocomplete?seed=What+is+the+deal
+http://localhost:5050
 ```
 
 You will get output similar to
+![Example](stuff/output.png)
 
-<img src="plots/output.png" style="width: 500px;"/>
 
-Replace the string after ```?seed=``` to change the seed and see suggested completions!
+Training for 1 epoch takes around a minute in a CPU (for default batch size). 
 
+Have fun!!
 
