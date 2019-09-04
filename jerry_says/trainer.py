@@ -1,5 +1,3 @@
-import math
-
 import torch
 from tqdm import tqdm
 
@@ -12,8 +10,6 @@ def train_epoch(model, iterator, optimizer, criterion, src_pad_index, tgt_pad_in
     model.train()
 
     epoch_loss = 0
-    report_every = math.ceil(len(iterator) / 25)
-    print(f'Total training batches {len(iterator)}')
     for i, batch in enumerate(tqdm(iterator)):
         optimizer.optimizer.zero_grad()
 
@@ -54,29 +50,22 @@ def train_epoch(model, iterator, optimizer, criterion, src_pad_index, tgt_pad_in
         # Calculate loss and normalize by no. of tokens
         loss = criterion(scores, target_reshaped) / float(num_non_padding)
         loss.backward()
+
+        clip = 1.0
+        torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
+
         optimizer.step()
-
-        if i % report_every == 0:
-            tqdm.write(
-                f'Step: {i+1}; '
-                f'training loss: {loss.item():.3f}; '
-                f'accuracy: {accuracy:.1f} '
-                f'lr: {optimizer._rate:.3E}'
-            )
-
         epoch_loss += loss.item()
 
-    return epoch_loss / len(iterator)
+    return epoch_loss / len(iterator), accuracy, optimizer._rate
 
 
 def validate_epoch(model, iterator, criterion, src_pad_index, tgt_pad_index):
     model.eval()
 
     epoch_loss = 0
-
-    print(f'Total validation batches {len(iterator)}')
     with torch.no_grad():
-        for i, batch in enumerate(tqdm(iterator)):
+        for i, batch in enumerate(iterator):
             src = batch.src
             tgt = batch.tgt
 
@@ -114,17 +103,9 @@ def validate_epoch(model, iterator, criterion, src_pad_index, tgt_pad_index):
 
             # Calculate loss and normalize by no. of tokens
             loss = criterion(scores, target_reshaped) / float(num_non_padding)
-
-            if i == len(iterator) - 1:
-                tqdm.write(
-                    f'Step: {i+1}; '
-                    f'validation loss: {loss.item():.3f}; '
-                    f'accuracy: {accuracy:.1f}'
-                )
-
             epoch_loss += loss.item()
 
-    return epoch_loss / len(iterator)
+    return epoch_loss / len(iterator), accuracy
 
 
 class ModifiedAdamOptimizer:
@@ -132,24 +113,26 @@ class ModifiedAdamOptimizer:
     Adam optimizer such that learning rate increases linearly for warmup steps and
     decreases thereafter proportionally to the inverse square root of the step number.
     """
-    def __init__(self, model):
+    def __init__(self, model, rnn_size):
         self.optimizer = torch.optim.Adam(model.parameters())
-        self.factor = 1e-5
-        self.start_step = 21
+        self.rnn_size = rnn_size
+        self.warmup = 53
+        self.factor = 0.01
         self._step = 0
         self._rate = 0
 
     def step(self):
         self._step += 1
-        rate = self.rate(self._step)
+        rate = self.rate()
         for p in self.optimizer.param_groups:
             p['lr'] = rate
         self._rate = rate
         self.optimizer.step()
 
-    def rate(self, step):
-        if step >= self.start_step:
-            step = step - self.start_step + 1
-        else:
-            step = 1.0
-        return self.factor * step ** (-0.01)
+    def rate(self, step=None):
+        if step is None:
+            step = self._step
+        return self.factor * (
+                self.rnn_size ** (-0.5) * min(
+            step ** (-0.5), step * self.warmup ** (-1.5))
+        )

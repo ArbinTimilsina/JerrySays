@@ -8,7 +8,7 @@ from jerry_says.data_reader import (
     SimpleIterator, build_dataset_and_vocab, get_sentences_by_jerry
 )
 from jerry_says.model import (
-    build_transformer_model, count_parameters
+    RNN_SIZE, build_transformer_model, count_parameters
 )
 from jerry_says.trainer import (
      ModifiedAdamOptimizer, train_epoch, validate_epoch
@@ -18,10 +18,10 @@ from jerry_says.trainer import (
 def argument_parser():
     ap = argparse.ArgumentParser()
     ap.add_argument(
-        '-epochs', '--epochs', type=int, default=60, help='Choose the number of epochs.'
+        '-epochs', '--epochs', type=int, default=600, help='Choose the number of epochs.'
     )
     ap.add_argument(
-        '-batch_size', '--batch_size', type=int, default=500, help='Batch size.'
+        '-batch_size', '--batch_size', type=int, default=200, help='Batch size.'
     )
 
     return vars(ap.parse_args())
@@ -32,6 +32,7 @@ def _main():
     num_epochs = int(args['epochs'])
     batch_size = int(args['batch_size'])
 
+    print()
     if torch.cuda.is_available():
         device = 'cuda'
         print('Training on GPU.')
@@ -45,19 +46,17 @@ def _main():
 
     src_vocab_size = len(src_field.vocab)
     tgt_vocab_size = len(tgt_field.vocab)
-    print('Vocabulary size of source = {:d}.'.format(src_vocab_size))
-    print('Vocabulary size of target = {:d}.'.format(tgt_vocab_size))
+    print(f'Vocabulary size of source is {src_vocab_size:d}.')
+    print(f'Vocabulary size of target is {tgt_vocab_size:d}.')
 
     src_pad_index = src_field.vocab.stoi[src_field.pad_token]
     tgt_pad_index = tgt_field.vocab.stoi[tgt_field.pad_token]
 
     train_iterator = SimpleIterator(
-        dataset=train_dataset, batch_size=batch_size,
-        sort_key=lambda x: (len(x.src), len(x.tgt)), device=device, train=True
+        dataset=train_dataset, batch_size=batch_size, device=device, train=True
     )
     valid_iterator = SimpleIterator(
-        dataset=valid_dataset, batch_size=batch_size,
-        sort_key=lambda x: (len(x.src), len(x.tgt)), device=device, train=False
+        dataset=valid_dataset, batch_size=batch_size, device=device, train=False
     )
 
     model = build_transformer_model(
@@ -73,7 +72,7 @@ def _main():
             torch.nn.init.xavier_uniform_(p)
     model.to(device)
 
-    optimizer = ModifiedAdamOptimizer(model)
+    optimizer = ModifiedAdamOptimizer(model, RNN_SIZE)
     criterion = torch.nn.NLLLoss(ignore_index=tgt_pad_index, reduction='sum')
 
     save_dir = 'trained_model'
@@ -82,17 +81,26 @@ def _main():
     model_save_path = os.path.join(save_dir, 'transformer-for-jerry.pt')
 
     best_valid_loss = float('inf')
-    for epoch in range(num_epochs):
-        start_time = time.time()
+    start_time = time.time()
 
-        _ = train_epoch(
+    print(f'Batch size is {batch_size}.')
+    print(
+        f'Training on {len(train_iterator)} batches and '
+        f'validating on {len(valid_iterator)} batches.\n'
+    )
+    for epoch in range(num_epochs):
+        train_loss, train_accuracy, train_lr = train_epoch(
             model, train_iterator, optimizer, criterion, src_pad_index, tgt_pad_index
         )
-        valid_loss = validate_epoch(
+        valid_loss, valid_accuracy = validate_epoch(
             model, valid_iterator, criterion, src_pad_index, tgt_pad_index
         )
 
         if valid_loss < best_valid_loss:
+            print(
+                f'Valid loss {valid_loss:.3f} is less than best valid loss '
+                f'{best_valid_loss:.3f}!'
+            )
             best_valid_loss = valid_loss
 
             checkpoint = {
@@ -100,12 +108,16 @@ def _main():
                 'src_field': src_field,
                 'tgt_field': tgt_field
             }
-
-            print('Saving checkpoint %s' % model_save_path)
+            print(f'Saving checkpoint {model_save_path:s}')
             torch.save(checkpoint, model_save_path)
+        else:
+            print('Validation loss did not improve!')
 
-        elapsed = time.time() - start_time
-        print(f'Epoch: {epoch + 1} | Time: {int(elapsed / 60)}m')
+        elapsed_time = time.time() - start_time
+        print(f'Epoch: {epoch + 1} (of {num_epochs}); elapsed time: {elapsed_time / 60:.1f}m')
+        print(f'Train loss: {train_loss:.3f}; accuracy: {train_accuracy:.3f}')
+        print(f'Valid loss: {valid_loss:.3f}; accuracy: {valid_accuracy:.3f}')
+        print(f'Train lr: {train_lr:.3E}\n')
 
 
 def main():

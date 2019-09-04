@@ -70,7 +70,6 @@ class EncoderDecoder(Module):
     """
     A standard Encoder-Decoder architecture.
     """
-
     def __init__(
             self, encoder, decoder, generator, rnn_size, src_vocab_size, tgt_vocab_size
     ):
@@ -140,9 +139,9 @@ def build_transformer_model(
         src_vocab_size: int,
         tgt_vocab_size: int,
         rnn_size: int = RNN_SIZE,
-        num_head: int = 8,
-        num_layers: int = 2,
-        dim_ff: int = 2048,
+        num_head: int = 4,
+        num_layers: int = 3,
+        dim_ff: int = 1024,
         dropout: float = DROPOUT
 ) -> EncoderDecoder:
     """

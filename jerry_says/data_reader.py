@@ -47,7 +47,7 @@ def build_dataset_and_vocab(sentences: List[str]):
         - source and target fields with Vocab object
     """
     # Minimum and maximum length for sentences to be included in the dataset
-    min_length, max_length = 4, 20
+    min_length, max_length = 4, 10
 
     # Define source and target fields
     bos_word = '<s>'
@@ -66,18 +66,19 @@ def build_dataset_and_vocab(sentences: List[str]):
 
     # Create list of Examples from the list of sentences
     examples = []
+    sent_count = 0
     for sentence in sentences:
         sentence_split = sentence.split(' ')
         sentence_length = len(sentence_split)
 
         if sentence_length <= min_length or sentence_length >= max_length:
             continue
+        sent_count += 1
 
         # If sent length is less than 8
         if sentence_length <= min_length + 4:
             # Src length is 3
             src_length = min_length - 1
-            # If sent length is greater than 16
         else:
             # Src length is 5
             src_length = min_length + 1
@@ -92,6 +93,7 @@ def build_dataset_and_vocab(sentences: List[str]):
             )
             examples.append(example)
 
+    print(f'Total {sent_count} sentences processed into {len(examples)} examples.')
     train_dataset, valid_dataset = Dataset(
         examples=examples,
         fields=[('src', src_field), ('tgt', tgt_field)]
@@ -112,19 +114,18 @@ class SimpleIterator(Iterator):
     Arguments:
         dataset: the Dataset object to load Examples from
         batch_size: batch size
-        sort_key: key to use for sorting examples in order to batch together
-            examples with similar lengths and minimize padding
+
         device: 'cpu' or 'cuda' where variables are going to be created on
         train: whether the iterator is for a train set (influences shuffling
             and sorting)
     """
-    def __init__(self, dataset, batch_size, sort_key, device, train):
+    def __init__(self, dataset, batch_size, device, train):
         super().__init__(
-            dataset=dataset, batch_size=batch_size, sort_key=sort_key,
-            device=device, train=train, repeat=False
+            dataset=dataset, batch_size=batch_size, device=device, train=train,
+            repeat=False, shuffle=True, sort_key=lambda x: (len(x.src), len(x.tgt))
         )
 
     def create_batches(self):
         self.batches = []
         for b in batch(self.data(), self.batch_size, self.batch_size_fn):
-            self.batches.append(sorted(b, key=self.sort_key))
+           self.batches.append(sorted(b, key=self.sort_key))
